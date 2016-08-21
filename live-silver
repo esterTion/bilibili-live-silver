@@ -1,7 +1,7 @@
 #!/bin/sh
 
 echo "BiliBili直播间瓜子领取机
-Writen By lcz970"
+Writen By esterTion"
 
 function calcsign(){
   sign=$(echo -n "$1" | md5sum); sign=${sign:0:32}
@@ -13,12 +13,14 @@ ua="User-Agent: bilianime/2640 CFNetwork/711.1.12 Darwin/14.0.0"
 if [[ $1 == "" ]]; then echo "请输入AccessKey"; exit; fi
 access=$1
 
+curl -L -s "http://live.bilibili.com/sign/doSign?access_key=$access"
+
 function getstatus(){
 echo -n "获取当前状态..."
 gettime
 calcsign "access_key=${access}&actionKey=appkey&appkey=27eb53fc9058f8c3&build=2640&device=pad&platform=ios&ts=${time}c2ed53a74eeefe3cf99fbd01d8c9c375"
 url="http://live.bilibili.com/mobile/freeSilverCurrentTask?access_key=${access}&actionKey=appkey&appkey=27eb53fc9058f8c3&build=2640&device=pad&platform=ios&ts=$time&sign=$sign"
-return=$(curl -s -H "$ua" "$url")
+return=$(curl -L -s -H "$ua" "$url")
 if [[ "$return" == "${return#\{}" || "$return" == "${return%\}}" ]]; then echo "获取出错，重试..."; sleep 3; getstatus; fi
 if [[ "$return" != "${return#*code??-101}" ]]; then echo "AccessKey无效，请确认"; exit; fi
 if [[ "$return" != "${return#*code??-10017}" ]]; then echo "今日瓜子已经领完"; exit; fi
@@ -42,57 +44,19 @@ while (( $timeleft > 0 )); do
   done
   if (( $sec < 10 )); then sec=0$sec; fi
   echo -ne "\r剩余${min}分${sec}秒"
-  if [[ $sec == 00 ]]; then echo -ne "\r发送心跳...";heartBeat; else
-  sleep 1; fi
+  sleep 1
 done
 getreward
 }
 
-function heartBeat(){
-	gettime
-	calcsign "access_key=${access}&actionKey=appkey&appkey=27eb53fc9058f8c3&build=2640&device=pad&platform=ios&ts=${time}c2ed53a74eeefe3cf99fbd01d8c9c375"
-	url="http://live.bilibili.com/mobile/freeSilverHeart?access_key=${access}&actionKey=appkey&appkey=27eb53fc9058f8c3&build=2640&device=pad&platform=ios&ts=$time&sign=$sign"
-	return=$(curl -s -H "$ua" "$url")
-	if [[ "$return" != "${return#*isAward??true}" ]]; then echo "瓜子可以领取"; timeleft=0; return; fi
-	if [[ "$return" != "${return#*code??0}" ]]; then echo "心跳正常"; else code=${return#*code\"\:}; until [[ $code == ${code%,*} ]]; do code=${code%,*}; done; echo "心跳出错，$code"; fi
-	done=
-	until [[ $done == "done" ]]; do
-	gettime
-	calcsign "access_key=${access}&actionKey=appkey&appkey=27eb53fc9058f8c3&build=2640&device=pad&platform=ios&ts=${time}c2ed53a74eeefe3cf99fbd01d8c9c375"
-	url="http://live.bilibili.com/mobile/freeSilverSurplus?access_key=${access}&actionKey=appkey&appkey=27eb53fc9058f8c3&build=2640&device=pad&platform=ios&ts=$time&sign=$sign"
-	return=$(curl -s -H "$ua" "$url")
-	if [[ "$return" != "${return#*message???ok}" ]]; then done=done; else echo -ne "\r获取剩余时间出错，重试..."; sleep 2; fi
-	done
-	surplus=${return#*surplus\"\:}
-	until [[ $surplus == ${surplus%,*} ]]; do surplus=${surplus%,*}; done
-	gettime
-	let "timeleft=surplus*60" goaltime=time+timeleft
-}
 function getreward(){
-	echo; echo -n "准备领取瓜子，确认剩余时间..."
-	done=
-	until [[ $done == "done" ]]; do
-	gettime
-	calcsign "access_key=${access}&actionKey=appkey&appkey=27eb53fc9058f8c3&build=2640&device=pad&platform=ios&ts=${time}c2ed53a74eeefe3cf99fbd01d8c9c375"
-	url="http://live.bilibili.com/mobile/freeSilverSurplus?access_key=${access}&actionKey=appkey&appkey=27eb53fc9058f8c3&build=2640&device=pad&platform=ios&ts=$time&sign=$sign"
-	return=$(curl -s -H "$ua" "$url")
-	if [[ "$return" != "${return#*message???ok}" ]]; then done=done; else echo -ne "\r获取剩余时间出错，重试..."; sleep 2; fi
-	done
-	surplus=${return#*surplus\"\:}
-	until [[ $surplus == ${surplus%,*} ]]; do surplus=${surplus%,*}; done
-	if (( $surplus > 0 )); then
-	  echo "剩余时间不为0，还需等待${surplus}分钟"
-	  gettime
-	  let surplus-- "timeleft=surplus*60+1" goaltime=time+timeleft
-	  timer
-	fi
-	echo -ne "\r剩余时间确认完成，领取瓜子..."
+	echo -ne "\n\n领取瓜子..."
 	done=
 	until [[ $done == "done" ]]; do
 	gettime
 	calcsign "access_key=${access}&actionKey=appkey&appkey=27eb53fc9058f8c3&build=2640&device=pad&platform=ios&ts=${time}c2ed53a74eeefe3cf99fbd01d8c9c375"
 	url="http://live.bilibili.com/mobile/freeSilverAward?access_key=${access}&actionKey=appkey&appkey=27eb53fc9058f8c3&build=2640&device=pad&platform=ios&ts=$time&sign=$sign"
-	return=$(curl -s -H "$ua" "$url")
+	return=$(curl -L -s -H "$ua" "$url")
 	if [[ "$return" != "${return#*message???ok}" ]]; then done=done; else echo -ne "\r领取瓜子出错，重试..."; echo $return; sleep 2; fi
 	done
 	echo "领取完成"
